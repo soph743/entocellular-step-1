@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Cell Counter</title>
+        <style>
+            /* --- Reset & base --- */
+            *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+            body {
+                font-family: 'Courier New', monospace;
+                background: #0d0d0d;
+                color: #e0e0e0;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 48px 24px;
+            }
+
+            h1 {
+                font-size: 2rem;
+                letter-spacing: 0.15em;
+                color: #7effd4;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+            }
+
+            .subtitle {
+                font-size: 0.85rem;
+                color: #666;
+                margin-bottom: 48px;
+                letter-spacing: 0.1 em;
+            }
+
+            /* --- drop zone --- */
+            #drop-zone {
+                width: 100%;
+                max-width: 560px;
+                border: 2px dashed #7effd4;
+                border-radius: 8px;
+                padding: 60px 24px;
+                text-align: center;
+                cursor: pointer;
+                transition: background 0.2s, border-color 0.2s;
+                color: #aaa;
+                font-size: 0.9rem;
+                letter-spacing:0.05em;
+            }
+            #drop-zone.drag-over {
+                background: rgba(126, 255, 212, 0.07);
+                border-color: #fff;
+                color: #fff;
+            }
+            #drop-zone span { display: block; margin-top: 8px; font-size: 0.75rem; color: #555; }
+
+            /* --- hidden file input --- */
+            #file-input { display: none; }
+
+            /* --- loading indicator --- */
+            #loading {
+                display: none;
+                margin-top: 32px;
+                font-size: 0.85rem;
+                color: #7effd4;
+                letter-spacing: 0.1em;
+                animation: pulse 1.2s ease-in-out infinite;
+            }
+            @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+            /* --- results section --- */
+            #results { display: none; margin-top: 48px; width: 100%; max-width: 800px; }
+
+            .count-display {
+                text-align: center;
+                margin-bottom: 32px;
+            }
+            .count-label {
+                font-size: 0.75rem;
+                letter-spacing: 0.2em;
+                color: #666;
+                text-transform: uppercase;
+                margin-bottom: 4px;
+            }
+            .count-number {
+                font-size: 5rem;
+                font-weight: bold;
+                color: #7effd4;
+                line-height: 1;
+            }
+            .count-unit {
+                font-size: 0.85rem;
+                color: #666;
+                letter-spacing: 0.1em;
+                margin-top: 4px;
+            }
+
+            #overlay-img {
+                width: 100%;
+                border-radius: 6px;
+                border: 1px solid #222;
+                display: block;
+            }
+
+            .img-label {
+                text-align: center;
+                font-size: 0.7rem;
+                color: #444;
+                margin-top: 8px;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+            }
+
+            /* --- reset button --- */
+            #reset-btn {
+                display: none;
+                margin: 32px auto 0;
+                background: transparent;
+                border: 1px solid #7effd4;
+                color: #7effd4;
+                padding: 10px 28px;
+                border-radius: 4px;
+                font-family: 'Courier New', monospace;
+                font-size: 0.8rem;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+                cursor: pointer;
+                transition: background 0.2s;
+            }
+            #reset-btn:hover { background: rgba(126,255,212,0.1); }
+        </style>
+    </head>
+    <body>
+
+        <h1>Cell Counter Prototype for Entocellular</h1>
+        <p class="subtitle">Whole-slide grayscale image analysis</p>
+
+        <div id="drop-zone">
+            Drop your <strong>.tiff</strong> file here
+            <span>or click to browse</span>
+        </div>
+        <input type="file" id="file-input" accept=".tiff,.tif" />
+
+        <div id="loading">Analyzing image...</div>
+
+        <div id="results">
+            <div class="count-display">
+                <div class="count-label">Cells detected</div>
+                <div class="count-number" id="count-value">-</div>
+                <div class="count-unit">cells</div>
+            </div>
+            <img id="overlay-img" src="" alt="Labeled cell overlay" />
+            <div class="img-label">Original image with cell labels overlay</div>
+        </div>
+
+        <button id="reset-btn">↩ Analyze another image</button>
+
+        <script>
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const countValue = document.getElementById('count-value');
+            const overlayImg = document.getElementById('overlay-img');
+            const resetBtn = document.getElementById('reset-btn');
+
+            // click to open file browser
+            dropZone.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files[0]) handleFile(fileInput.files[0]);
+            });
+
+            // drag and drop functionality
+            dropZone.addEventListener('dragover', e => {
+                e.preventDefault();
+                dropZone.classList.add('drag-over');
+            });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+            dropZone.addEventListener('drop', e=> {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                const file = e.dataTransfer.files[0];
+                if (file) handleFile(file);
+            });
+
+            // send file to backend
+            async function handleFile(file) {
+                dropZone.style.display = 'none';
+                loading.style.display = 'block';
+                results.style.display = 'none';
+                resetBtn.style.display = 'none';
+
+                const formData = new FormData();
+                formData.append('image', file);
+
+                try {
+                    const res = await fetch('/analyze', { method: 'POST', body: formData });
+                    const data = await res.json();
+
+                    countValue.textContent = data.cell_count.toLocaleString();
+                    overlayImg.src = data.overlay_image;
+
+                    loading.style.display = 'none';
+                    results.style.display = 'block';
+                    resetBtn.style.display = 'block';
+                }
+                catch (err) {
+                    loading.textContent = 'Error processing image.';
+                    console.error(err);
+                }
+            }
+
+            // reset UI
+            resetBtn.addEventListener('click', () => {
+                fileInput.value = '';
+                results.style.display = 'none';
+                resetBtn.style.display = 'none';
+                loading.style.display = 'none';
+                loading.textContent = 'Analyzing Image...';
+                dropZone.style.display = 'block';
+            });
+        </script>
+    </body>
+</html>
