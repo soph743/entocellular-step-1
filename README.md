@@ -1,46 +1,19 @@
-# entocellular-step-1
-A prototype for a CLI and web tool for counting cells in whole-slide-images for Entocellular's ML project
+# entocellular prototype
+A prototype for a package API and web tool for counting cells in whole-slide images for Entocellular's ML project.
 
-# 1. web tool for counting cells
+## 1. web tool for counting cells
 a tool for just dropping .tiff images and getting the number of cells in the image. meant for visualization mainly.
 
-## 1a. how it works
-`[Browser: drag & drop .tiff]
-
-        ↓  POST /analyze (multipart form)
-        
-[Flask Backend]
-
-  → Read .tiff with tifffile
-  
-  → Gaussian filter (mahotas)
-  
-  → Threshold (mahotas)
-  
-  → mh.label() → nr_objects
-  
-  → Colorize labeled image
-  
-  → Encode as base64 PNG
-  
-        ↓  JSON { cell_count, overlay_image }
-        
-[Browser: display overlay + count]`
-
-## 1b. project structure
-
-`
-cell-counter-web/
-
-├── app.py
-
-├── requirements.txt
-
-└── templates/
-
-    └── index.html`
     
-# 2. cli tool (starter code -- to be built out in future work)
-eventually this could be expanded to support various methods for counting cells (not just limited to those provided in Mahotas). 
+## 2. package `cellcounter` (starter API -- to be built out in future work)
+eventually, this could be expanded to support various methods for counting cells (not just those provided in Mahotas) as well as different display methods.
 
-currently, this tool can be used to run a script `generate_counts.py` that returns the count of cells in an image.
+### API usage
+`git clone https://github.com/soph743/entocellular-step-1`
+`cd entocellular-step-1`
+`pip install -r requirements.txt`
+`python demo.py`
+
+### web app usage
+this app is currently not deployed publicly.
+
