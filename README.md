@@ -6,23 +6,37 @@ a tool for just dropping .tiff images and getting the number of cells in the ima
 
 ## 1a. how it works
 `[Browser: drag & drop .tiff]
+
         ↓  POST /analyze (multipart form)
+        
 [Flask Backend]
+
   → Read .tiff with tifffile
+  
   → Gaussian filter (mahotas)
+  
   → Threshold (mahotas)
+  
   → mh.label() → nr_objects
+  
   → Colorize labeled image
+  
   → Encode as base64 PNG
+  
         ↓  JSON { cell_count, overlay_image }
+        
 [Browser: display overlay + count]`
 
 ## 1b. project structure
 
 `cell-counter-web/
+
 ├── app.py
+
 ├── requirements.txt
+
 └── templates/
+
     └── index.html`
     
 # 2. cli tool (starter code -- to be built out in future work)
