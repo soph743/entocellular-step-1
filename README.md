@@ -20,3 +20,27 @@ eventually, this could be expanded to support various methods for counting cells
 ### Web app usage
 this app is currently not deployed publicly.
 
+
+### API usage
+`git clone https://github.com/soph743/entocellular-step-1`
+
+`cd entocellular-step-1`
+
+`pip install -r requirements.txt`
+
+`python demo.py`
+
+### Web app usage
+this app is currently not deployed publicly.
+
+home page
+
+![image](assets/home-page.png)
+
+upload screen (can also drag and drop)
+
+![image](assets/upload-screen.png)
+
+analysis of image upload
+
+![image](assets/analysis-screen.png)
