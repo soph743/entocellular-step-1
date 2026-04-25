@@ -5,7 +5,7 @@ A prototype for a CLI and web tool for counting cells in whole-slide-images for 
 a tool for just dropping .tiff images and getting the number of cells in the image. meant for visualization mainly.
 
 ## 1a. how it works
-`[Browser: drag & drop .tiff]\n
+`[Browser: drag & drop .tiff]
 
         ↓  POST /analyze (multipart form)
         
