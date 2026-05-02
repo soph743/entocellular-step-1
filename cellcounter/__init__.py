@@ -49,7 +49,11 @@ def cellpose3_label(image):
     """
     io.logger_setup()
 
-    model = denoise.CellposeDenoiseModel(gpu=check_gpu(), model_type="cyto3", restore_type="denoise_cyto3")
+    model = denoise.CellposeDenoiseModel(
+        gpu=check_gpu(),
+        model_type="cyto3",
+        restore_type="denoise_cyto3"
+    )
     masks, flows, styles, imgs_dn = model.eval([image], diameter=None, channels=[0,0])
     
     mask = masks[0] # (segmentation of one image)
