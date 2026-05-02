@@ -4,8 +4,16 @@ import mahotas as mh
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from cellpose import core, denoise, utils, io, models, metrics
 
 def mahotas_label(image):
+    """
+    takes a grayscale numpy array (.tiff file), returns (labeled_array, cell_count)
+    
+    usage:
+        labels, count = cellcounter.mahotas_label(image)
+    """
+
     # normalize to 2D if needed
     img = image.copy()
     if img.ndim == 3:
@@ -20,21 +28,51 @@ def mahotas_label(image):
 
     return labeled, cell_count
 
-def label(image, method='mahotas'):
+def check_gpu():
+    """
+    checks for available resources.
+    
+    usage:
+        gpu = check_gpu() # true or false
+    """
+    use_GPU = core.use_gpu()
+    tf = [False, True]
+
+    return tf[use_GPU]
+
+def cellpose3_label(image):
     """
     takes a grayscale numpy array (.tiff file), returns (labeled_array, cell_count)
     
     usage:
-        labels, count = cellcounter.label(image)
+        labels, count, flows, styles, imgs_dn = cellcounter.cellpose3_label(image)
+    """
+    io.logger_setup()
+
+    model = denoise.CellposeDenoiseModel(gpu=check_gpu(), model_type="cyto3", restore_type="denoise_cyto3")
+    masks, flows, styles, imgs_dn = model.eval(image, diameter=None, channels=[0,0])
+    
+    for i, m in enumerate(masks):
+        print(f"Image {i}: {m.max()} cells detected.")
+    
+    return masks, m.max(), flows, styles, imgs_dn
+
+def label(image, method='mahotas'):
+    """
+    takes a grayscale numpy array (.tiff file) and segmentation method, returns call to specified method on input image.
+    
+    usage:
+        labels, count = cellcounter.label(image, method='cellpose3')
     """
 
-    supported_methods = ['mahotas']
+    supported_methods = ['mahotas', 'cellpose3']
 
-    if method not in supported_methods:
+    if method == 'mahotas':
+        return mahotas_label(image)
+    elif method == 'cellpose3':
+        return cellpose3_label(image)
+    else:
         raise ValueError(f"Unknown method {method}. The only methods of labelling currently supported are: " + supported_methods)
-    
-    return mahotas_label(image)
-    
 
 def display(image, labels, count):
     """

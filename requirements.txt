@@ -5,3 +5,5 @@ numpy
 tifffile
 matplotlib
 pillow
+opencv-python-headless>=4.9.0.80
+cellpose==3.1.1.2
