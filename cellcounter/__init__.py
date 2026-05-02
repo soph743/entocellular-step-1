@@ -21,7 +21,7 @@ def mahotas_label(image):
 
     background = mh.gaussian_filter(img, 50) # sigma=50 to detect only background
     corrected = img - background
-    corrected = corrected - min()
+    corrected = corrected - corrected.min()
 
     smoothed = mh.gaussian_filter(corrected, 2)
 
