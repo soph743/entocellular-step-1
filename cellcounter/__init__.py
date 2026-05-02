@@ -13,33 +13,31 @@ def mahotas_label(image):
     usage:
         labels, count = cellcounter.mahotas_label(image)
     
-
-    # normalize to 2D if needed
+    """
     img = image.copy()
     if img.ndim == 3:
         img = img[:, :, 0]
     img = img.astype(np.float64)
 
-    # mahotas segmentation pipeline
-    smoothed = mh.gaussian_filter(img, 2)
-    T = mh.thresholding.otsu(smoothed.astype(np.uint8)) # otsu method for tuning threshold
+    background = mh.gaussian_filter(img, 50) # sigma=50 to detect only background
+    corrected = img - background
+    corrected = corrected - min()
+
+    smoothed = mh.gaussian_filter(corrected, 2)
+
+    T = mh.thresholding.otsu(smoothed.astype(np.iunt8))
     threshold = smoothed > T
 
-    # distance transform (peaks become the cell centers)
     dist = mh.distance(threshold)
-    dist = mh.gaussian_filter(dist.astype(np.float64), 2)
-
-    # find local maxima as seeds
+    dist = mh.gaussian_filter(dist.astype(np.float64), 4)
     rmax = mh.regmax(dist)
     seeds, _ = mh.label(rmax)
 
-    # watershed from seeds
     labeled = mh.cwatershed(dist.max() - dist, seeds)
     labeled = labeled * threshold
-
-    # filter and relabed
+    
     labeled, cell_count = mh.labeled.filter_labeled(
-        labeled, 
+        labeled,
         remove_bordering=True,
         min_size=30,
         max_size=5000
@@ -48,20 +46,8 @@ def mahotas_label(image):
     labeled, cell_count = mh.labeled.relabel(labeled)
 
     return labeled, cell_count
-    """
-    # normalize to 2D if needed
-    img = image.copy()
-    if img.ndim == 3:
-        img = img[:, :, 0]
-    img = img.astype(np.float64)
 
-    # mahotas segmentation pipeline
-    smoothed = mh.gaussian_filter(img, 4)
-    threshold = smoothed > smoothed.mean()
-    labeled, cell_count = mh.label(threshold)
-    labeled, cell_count = mh.labeled.filter_labeled(labeled, remove_bordering=True)
-
-    return labeled, cell_count
+    
 
 def check_gpu():
     """
