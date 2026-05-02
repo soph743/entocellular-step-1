@@ -21,10 +21,31 @@ def mahotas_label(image):
     img = img.astype(np.float64)
 
     # mahotas segmentation pipeline
-    smoothed = mh.gaussian_filter(img, 4)
-    threshold = smoothed > smoothed.mean()
-    labeled, cell_count = mh.label(threshold)
-    labeled, cell_count = mh.labeled.filter_labeled(labeled, remove_bordering=True)
+    smoothed = mh.gaussian_filter(img, 2)
+    T = mh.thresholding.otsu(smoothed.astype(np.uint8)) # otsu method for tuning threshold
+    threshold = smoothed > T
+
+    # distance transform (peaks become the cell centers)
+    dist = mh.distance(threshold)
+    dist = mh.gaussian_filter(dist.astype(np.float64), 2)
+
+    # find local maxima as seeds
+    rmax = mh.regmax(dist)
+    seeds, _ = mh.label(rmax)
+
+    # watershed from seeds
+    labeled = mh.cwatershet(dist.max() - dist, seeds)
+    labeled = labeled * threshold
+
+    # filter and relabed
+    labeled, cell_count = mh.labeled.filter_labeled(
+        labeled, 
+        remove_bordering=True,
+        min_size=30,
+        max_size=5000
+    )
+
+    labeled, cell_count = mh.labeled.relabel(labeled)
 
     return labeled, cell_count
 
