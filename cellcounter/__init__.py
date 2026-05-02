@@ -25,7 +25,7 @@ def mahotas_label(image):
 
     smoothed = mh.gaussian_filter(corrected, 2)
 
-    T = mh.thresholding.otsu(smoothed.astype(np.iunt8))
+    T = mh.thresholding.otsu(smoothed.astype(np.uint8))
     threshold = smoothed > T
 
     dist = mh.distance(threshold)
