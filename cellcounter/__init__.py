@@ -12,7 +12,7 @@ def mahotas_label(image):
     
     usage:
         labels, count = cellcounter.mahotas_label(image)
-    """
+    
 
     # normalize to 2D if needed
     img = image.copy()
@@ -46,6 +46,20 @@ def mahotas_label(image):
     )
 
     labeled, cell_count = mh.labeled.relabel(labeled)
+
+    return labeled, cell_count
+    """
+    # normalize to 2D if needed
+    img = image.copy()
+    if img.ndim == 3:
+        img = img[:, :, 0]
+    img = img.astype(np.float64)
+
+    # mahotas segmentation pipeline
+    smoothed = mh.gaussian_filter(img, 4)
+    threshold = smoothed > smoothed.mean()
+    labeled, cell_count = mh.label(threshold)
+    labeled, cell_count = mh.labeled.filter_labeled(labeled, remove_bordering=True)
 
     return labeled, cell_count
 

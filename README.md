@@ -9,9 +9,9 @@ a tool for just dropping .tiff images and getting the number of cells in the ima
 eventually, this could be expanded to support various methods for counting cells (not just those provided in Mahotas) as well as different display methods.
 
 ### API usage
-`git clone https://github.com/soph743/entocellular-step-1`
+`git clone https://github.com/soph743/entocellular-prototype`
 
-`cd entocellular-step-1`
+`cd entocellular-prototype`
 
 `pip install -r requirements.txt`
 
@@ -22,9 +22,9 @@ this app is currently not deployed publicly.
 
 
 ### API usage
-`git clone https://github.com/soph743/entocellular-step-1`
+`git clone https://github.com/soph743/entocellular-prototype`
 
-`cd entocellular-step-1`
+`cd entocellular-prototype`
 
 `pip install -r requirements.txt`
 
