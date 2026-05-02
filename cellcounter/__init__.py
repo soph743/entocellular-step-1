@@ -45,17 +45,18 @@ def cellpose3_label(image):
     takes a grayscale numpy array (.tiff file), returns (labeled_array, cell_count)
     
     usage:
-        labels, count, flows, styles, imgs_dn = cellcounter.cellpose3_label(image)
+        labels, count = cellcounter.cellpose3_label(image)
     """
     io.logger_setup()
 
     model = denoise.CellposeDenoiseModel(gpu=check_gpu(), model_type="cyto3", restore_type="denoise_cyto3")
-    masks, flows, styles, imgs_dn = model.eval(image, diameter=None, channels=[0,0])
+    masks, flows, styles, imgs_dn = model.eval([image], diameter=None, channels=[0,0])
     
-    for i, m in enumerate(masks):
-        print(f"Image {i}: {m.max()} cells detected.")
+    mask = masks[0] # (segmentation of one image)
+    cell_count = mask.max()
+
     
-    return masks, m.max(), flows, styles, imgs_dn
+    return mask, cell_count
 
 def label(image, method='mahotas'):
     """
@@ -91,19 +92,37 @@ def display(image, labels, count):
     display_img = (display_img / display_img.max() * 255).astype(np.uint8)
     rgb = np.stack([display_img, display_img, display_img], axis=-1)
 
+    fig, ax = plt.subplots(figsize=(10, 10))
+    ax.imshow(rgb, cmap='gray')
+
+    if hasattr(utils, 'outlines_list'):
+        try:
+            outlines = utils.outlines_list(labels)
+            for outline in outlines:
+                ax.plot(outline[:,1], outline[:,0], color='yellow', linewidth=0.8)
+        except Exception:
+            _draw_filled_overlay(ax, rgb, labels)
+    else:
+        _draw_filled_overlay(ax, rgb, labels)
+    
+    ax.set_title(f"{count} cells", fontsize=18, fontweight='bold', pad=16)
+    ax.axis('off')
+    plt.tight_layout()
+    plt.show()
+
+def _draw_filled_overlay(ax, rgb, labels):
+    """
+    internal helper for display() to draw colored cell regions for mahotas labels
+    """
+
     # colorize labeled regions
-    cmap = plt.get_cmap("Purples")
+    cmap = plt.get_cmap("nipy_spectral")
     max_label = labels.max()
     if max_label > 0:
         colors = (cmap(labels.astype(float) / max_label)[:,:,:3]*255).astype(np.uint8)
         mask = labels > 0
-        alpha = 0.9
+        alpha = 0.55
         rgb[mask] = (rgb[mask] * (1 - alpha) + colors[mask] * alpha).astype(np.uint8)
 
     # plot display
-    fig, ax = plt.subplots(figsize=(10,10))
-    ax.imshow(rgb)
-    ax.set_title(f"Cells Detected: {count}", fontsize=18, fontweight='bold', pad=16)
-    ax.axis('off')
-    plt.tight_layout()
-    plt.show()
+    ax.imshow(rgb)  
