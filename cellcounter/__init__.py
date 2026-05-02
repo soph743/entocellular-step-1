@@ -34,7 +34,7 @@ def mahotas_label(image):
     seeds, _ = mh.label(rmax)
 
     # watershed from seeds
-    labeled = mh.cwatershet(dist.max() - dist, seeds)
+    labeled = mh.cwatershed(dist.max() - dist, seeds)
     labeled = labeled * threshold
 
     # filter and relabed
