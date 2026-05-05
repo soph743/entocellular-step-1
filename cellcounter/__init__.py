@@ -102,8 +102,17 @@ def cellpose3_label_tiled(image, tile_size=512, overlap=128, iou_threshold=0.3):
         restore_type="denoise_cyto3"
     )
 
-    for r in range(0, h - tile_size + 1, step):
-        for c in range(0, w - tile_size + 1, step):
+    """
+    generate tile starts that cover the full image, prevents incomplete segmentation due to input image size
+    """
+    def get_starts(length):
+        starts = list(range(0, length - tile_size, step))
+        if not starts or starts[-1] + tile_size < length:
+            starts.append(length - tile_size)  # edge tile
+        return starts
+
+    for r in get_starts(h):
+        for c in get_starts(w):
             tile      = img[r:r+tile_size, c:c+tile_size]
             masks, _, _, _ = model.eval([tile], diameter=None, channels=[0, 0])
             tile_mask = masks[0].astype(np.int64)
