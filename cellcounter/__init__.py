@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from cellpose import core, denoise, utils, io, models, metrics
+import gc
 
 def mahotas_label(image):
     """
@@ -117,7 +118,12 @@ def cellpose3_label_tiled(image, tile_size=512, overlap=128, iou_threshold=0.3):
             masks, _, _, _ = model.eval([tile], diameter=None, channels=[0, 0])
             tile_mask = masks[0].astype(np.int64)
 
+            # clean up old masks
+            del masks
+            gc.collect()
+
             if tile_mask.max() == 0:
+                del tile_mask
                 continue
 
             tile_mask[tile_mask > 0] += global_label_offset
@@ -128,6 +134,10 @@ def cellpose3_label_tiled(image, tile_size=512, overlap=128, iou_threshold=0.3):
                 tile_mask,           # write the new label
                 canvas[r:r+tile_size, c:c+tile_size]  # keep existing canvas otherwise
             )
+
+            # free tile memory before next iteration
+            del tile_mask
+            gc.collect()
 
     # NMS deduplication (fixes duplicate segmentations due to patch overlap)
     canvas, cell_count = _nms_deduplicate(
