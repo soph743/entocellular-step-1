@@ -130,7 +130,11 @@ def cellpose3_label_tiled(image, tile_size=512, overlap=128, iou_threshold=0.3):
             )
 
     # NMS deduplication (fixes duplicate segmentations due to patch overlap)
-    canvas, cell_count = _nms_deduplicate(canvas, iou_threshold=iou_threshold)
+    canvas, cell_count = _nms_deduplicate(
+        canvas, 
+        iou_threshold=iou_threshold,
+        tile_size=tile_size
+        )
 
     return canvas, cell_count
 
@@ -170,7 +174,7 @@ def _iou(box_a, box_b):
     return intersection / union if union > 0 else 0.0
 
 
-def _nms_deduplicate(labeled, iou_threshold=0.3):
+def _nms_deduplicate(labeled, iou_threshold=0.3, tile_size=512):
     """
     removes duplicate cells introduced at tile borders using NMS.
     keeps the larger of any two regions with IoU above iou_threshold.
@@ -189,11 +193,22 @@ def _nms_deduplicate(labeled, iou_threshold=0.3):
     for i, id_a in enumerate(label_ids):
         if id_a in to_remove:
             continue
+
+        box_a = bboxes[id_a]
+
         for id_b in label_ids[i+1:]:
             if id_b in to_remove:
                 continue
 
-            iou = _iou(bboxes[id_a], bboxes[id_b])
+            box_b = bboxes[id_b]
+
+            # skip comparison if bboxes are one tile_size apart, as they cannot be duplicates if this is the case
+            if abs(box_a[0] - box_b[0]) > tile_size:
+                continue
+            if abs(box_a[1] - box_b[1]) > tile_size:
+                continue
+
+            iou = _iou(box_a, box_b)
             if iou > iou_threshold:
                 # discard the smaller region
                 if sizes[id_a] >= sizes[id_b]:
