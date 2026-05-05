@@ -81,7 +81,7 @@ def cellpose3_label(image):
     
     return mask, cell_count
 
-def cellpose3_label_tiled(image, tile_size=512, overlap=128, iou_threshold=0.3):
+def cellpose3_label_tiled(image, tile_size=256, overlap=64, iou_threshold=0.3):
     """
     takes a grayscale numpy array (.tiff file), slices it into small 'patches', segments it, and returs (labeled_array, cell_count)
 
@@ -251,7 +251,6 @@ def label(image, method='mahotas'):
     elif method == 'cellpose3':
         return cellpose3_label(image)
     elif method == 'cellpose3_tiled':
-        print(f"Additional arguments available by calling cellpose3_tiled():\n1. tile_size: size of each patch\n2. overlap: how many pixels adjacent tiles share\n3. iou_threshold: for tuning patch segmentation")
         return cellpose3_label_tiled(image)
     else:
         raise ValueError(f"Unknown method {method}. The only methods of labelling currently supported are: " + supported_methods)
