@@ -119,15 +119,21 @@ def cellpose3_label_tiled(image, tile_size=256, overlap=64, iou_threshold=0.3):
             tile_mask = masks[0].astype(np.int64)
 
             # clean up old masks
-            del masks
+            del masks, flows, styles
             gc.collect()
 
             if tile_mask.max() == 0:
                 del tile_mask
                 continue
 
+            # capture how many cells found in tile before remapping
+            n_cells_in_tile = int(tile_mask.max())
+
+            # remap to globally unique IDs
             tile_mask[tile_mask > 0] += global_label_offset
-            global_label_offset += int(tile_mask.max())
+
+            # increment by tile's own cell count, not the remapped max
+            global_label_offset += n_cells_in_tile
 
             canvas[r:r+tile_size, c:c+tile_size] = np.where(
                 tile_mask > 0,       # only write where cellpose found cells
