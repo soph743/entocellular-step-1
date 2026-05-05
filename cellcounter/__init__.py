@@ -93,7 +93,7 @@ def cellpose3_label_tiled(image, tile_size=512, overlap=128, iou_threshold=0.3):
 
     h, w   = img.shape
     step   = tile_size - overlap
-    canvas = np.zeros((h, w), dtype=np.int32)
+    canvas = np.zeros((h, w), dtype=np.int64)
     global_label_offset = 0
 
     model = denoise.CellposeDenoiseModel(
@@ -106,13 +106,13 @@ def cellpose3_label_tiled(image, tile_size=512, overlap=128, iou_threshold=0.3):
         for c in range(0, w - tile_size + 1, step):
             tile      = img[r:r+tile_size, c:c+tile_size]
             masks, _, _, _ = model.eval([tile], diameter=None, channels=[0, 0])
-            tile_mask = masks[0]
+            tile_mask = masks[0].astype(np.int64)
 
             if tile_mask.max() == 0:
                 continue
 
             tile_mask[tile_mask > 0] += global_label_offset
-            global_label_offset += tile_mask.max()
+            global_label_offset += int(tile_mask.max())
 
             canvas[r:r+tile_size, c:c+tile_size] = np.where(
                 tile_mask > 0,       # only write where cellpose found cells
@@ -168,6 +168,7 @@ def _nms_deduplicate(labeled, iou_threshold=0.3):
 
     returns a cleaned labeled array.
     """
+    labeled = labeled.astype(np.int64)
     bboxes   = _compute_bboxes(labeled)
     label_ids = list(bboxes.keys())
 
