@@ -71,7 +71,7 @@ def cellpose3_label(image):
     model = denoise.CellposeDenoiseModel(
         gpu=check_gpu(),
         model_type="cyto3",
-        restore_type="denoise_cyto3"
+        #restore_type="denoise_cyto3"
     )
     masks, flows, styles, imgs_dn = model.eval([image], diameter=None, channels=[0,0])
     
@@ -81,7 +81,7 @@ def cellpose3_label(image):
     
     return mask, cell_count
 
-def cellpose3_label_tiled(image, tile_size=256, overlap=64, iou_threshold=0.3):
+def cellpose3_label_tiled(image, tile_size=512, overlap=128, iou_threshold=0.3):
     """
     takes a grayscale numpy array (.tiff file), slices it into small 'patches', segments it, and returs (labeled_array, cell_count)
 
