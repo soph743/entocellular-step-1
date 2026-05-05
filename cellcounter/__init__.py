@@ -119,7 +119,7 @@ def cellpose3_label_tiled(image, tile_size=256, overlap=64, iou_threshold=0.3):
             tile_mask = masks[0].astype(np.int64)
 
             # clean up old masks
-            del masks, flows, styles
+            del masks
             gc.collect()
 
             if tile_mask.max() == 0:
