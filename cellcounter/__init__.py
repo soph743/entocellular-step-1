@@ -11,8 +11,7 @@ def mahotas_label(image):
     takes a grayscale numpy array (.tiff file), returns (labeled_array, cell_count)
     
     usage:
-        labels, count = cellcounter.mahotas_label(image)
-    
+        labels, count = cellcounter.mahotas_label(image)    
     """
     img = image.copy()
     if img.ndim == 3:
@@ -46,8 +45,6 @@ def mahotas_label(image):
     labeled, cell_count = mh.labeled.relabel(labeled)
 
     return labeled, cell_count
-
-    
 
 def check_gpu():
     """
@@ -83,6 +80,127 @@ def cellpose3_label(image):
     
     return mask, cell_count
 
+def cellpose3_label_tiled(image, tile_size=512, overlap=128, iou_threshold=0.3):
+    """
+    takes a grayscale numpy array (.tiff file), slices it into small 'patches', segments it, and returs (labeled_array, cell_count)
+
+    usage:
+        labels, count = cellcounter.cellpose3_label_tiled(image)
+    """
+    img = image.copy()
+    if img.ndim == 3:
+        img = img[:, :, 0]
+
+    h, w   = img.shape
+    step   = tile_size - overlap
+    canvas = np.zeros((h, w), dtype=np.int32)
+    global_label_offset = 0
+
+    model = denoise.CellposeDenoiseModel(
+        gpu=check_gpu(),
+        model_type="cyto3",
+        restore_type="denoise_cyto3"
+    )
+
+    for r in range(0, h - tile_size + 1, step):
+        for c in range(0, w - tile_size + 1, step):
+            tile      = img[r:r+tile_size, c:c+tile_size]
+            masks, _, _, _ = model.eval([tile], diameter=None, channels=[0, 0])
+            tile_mask = masks[0]
+
+            if tile_mask.max() == 0:
+                continue
+
+            tile_mask[tile_mask > 0] += global_label_offset
+            global_label_offset += tile_mask.max()
+
+            canvas[r:r+tile_size, c:c+tile_size] = np.where(
+                tile_mask > 0,       # only write where cellpose found cells
+                tile_mask,           # write the new label
+                canvas[r:r+tile_size, c:c+tile_size]  # keep existing canvas otherwise
+            )
+
+    # NMS deduplication (fixes duplicate segmentations due to patch overlap)
+    canvas, cell_count = _nms_deduplicate(canvas, iou_threshold=iou_threshold)
+
+    return canvas, cell_count
+
+def _compute_bboxes(labeled):
+    """
+    returns a dict of {label_id: (r_min, c_min, r_max, c_max)}
+    for every labeled region.
+    """
+    bboxes = {}
+    regions = mh.labeled.bbox(labeled, as_slice=False)
+    # regions[i] = [r_min, r_max, c_min, c_max] for label i
+    for label_id in range(1, labeled.max() + 1):
+        if label_id < len(regions):
+            r_min, r_max, c_min, c_max = regions[label_id]
+            bboxes[label_id] = (r_min, c_min, r_max, c_max)
+    return bboxes
+
+
+def _iou(box_a, box_b):
+    """
+    computes Intersection over Union for two bounding boxes.
+    Each box is (r_min, c_min, r_max, c_max).
+    """
+    r_min = max(box_a[0], box_b[0])
+    c_min = max(box_a[1], box_b[1])
+    r_max = min(box_a[2], box_b[2])
+    c_max = min(box_a[3], box_b[3])
+
+    intersection = max(0, r_max - r_min) * max(0, c_max - c_min)
+    if intersection == 0:
+        return 0.0
+
+    area_a = (box_a[2] - box_a[0]) * (box_a[3] - box_a[1])
+    area_b = (box_b[2] - box_b[0]) * (box_b[3] - box_b[1])
+    union  = area_a + area_b - intersection
+
+    return intersection / union if union > 0 else 0.0
+
+
+def _nms_deduplicate(labeled, iou_threshold=0.3):
+    """
+    removes duplicate cells introduced at tile borders using NMS.
+    keeps the larger of any two regions with IoU above iou_threshold.
+
+    returns a cleaned labeled array.
+    """
+    bboxes   = _compute_bboxes(labeled)
+    label_ids = list(bboxes.keys())
+
+    # compute pixel size of each region for scoring
+    sizes = mh.labeled.labeled_size(labeled)
+
+    to_remove = set()
+
+    for i, id_a in enumerate(label_ids):
+        if id_a in to_remove:
+            continue
+        for id_b in label_ids[i+1:]:
+            if id_b in to_remove:
+                continue
+
+            iou = _iou(bboxes[id_a], bboxes[id_b])
+            if iou > iou_threshold:
+                # discard the smaller region
+                if sizes[id_a] >= sizes[id_b]:
+                    to_remove.add(id_b)
+                else:
+                    to_remove.add(id_a)
+                    break  # id_a is gone, move to next id_a
+
+    # zero out removed regions
+    cleaned = labeled.copy()
+    for label_id in to_remove:
+        cleaned[cleaned == label_id] = 0
+
+    # relabel to close gaps
+    cleaned, cell_count = mh.labeled.relabel(cleaned)
+    return cleaned, int(cell_count)
+
 def label(image, method='mahotas'):
     """
     takes a grayscale numpy array (.tiff file) and segmentation method, returns call to specified method on input image.
@@ -91,12 +209,15 @@ def label(image, method='mahotas'):
         labels, count = cellcounter.label(image, method='cellpose3')
     """
 
-    supported_methods = ['mahotas', 'cellpose3']
+    supported_methods = ['mahotas', 'cellpose3', 'cellpose3_tiled']
 
     if method == 'mahotas':
         return mahotas_label(image)
     elif method == 'cellpose3':
         return cellpose3_label(image)
+    elif method == 'cellpose3_tiled':
+        print(f"Additional arguments available by calling cellpose3_tiled():\n1. tile_size: size of each patch\n2. overlap: how many pixels adjacent tiles share\n3. iou_threshold: for tuning patch segmentation")
+        return cellpose3_label_tiled(image)
     else:
         raise ValueError(f"Unknown method {method}. The only methods of labelling currently supported are: " + supported_methods)
 
